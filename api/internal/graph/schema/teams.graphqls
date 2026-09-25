@@ -440,6 +440,8 @@ input DisableTeamFeatureInput {
 enum TeamFeatureName {
 	"Vertex AI service."
 	ai
+	"Source automation."
+	sourceAutomation
 }
 
 "Environments where a team feature can be enabled or disabled."
