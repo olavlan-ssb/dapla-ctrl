@@ -17,6 +17,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"github.com/sirupsen/logrus"
 	"github.com/statisticsnorway/dapla-ctrl/api/internal/activitylog"
+	"github.com/statisticsnorway/dapla-ctrl/api/internal/artifactregistry"
 	"github.com/statisticsnorway/dapla-ctrl/api/internal/auth/authz"
 	"github.com/statisticsnorway/dapla-ctrl/api/internal/database"
 	"github.com/statisticsnorway/dapla-ctrl/api/internal/graph/model"
@@ -193,6 +194,7 @@ func run(ctx context.Context, cfg *seedConfig, log logrus.FieldLogger) error {
 
 	ctx = database.NewLoaderContext(ctx, pool)
 	ctx = activitylog.NewLoaderContext(ctx, pool)
+	ctx = artifactregistry.NewLoaderContext(ctx, pool)
 	ctx = user.NewLoaderContext(ctx, pool)
 	ctx = team.NewLoaderContext(ctx, pool, log)
 	ctx = authz.NewLoaderContext(ctx, pool)
@@ -383,11 +385,19 @@ func run(ctx context.Context, cfg *seedConfig, log logrus.FieldLogger) error {
 }
 
 func createGroupAndAddUsers(ctx context.Context, actor *authz.Actor, team slug.Slug, teamCategory string, suffix *string, users []*user.User, membersToAdd int) {
-	createdGroup, _ := group.Create(ctx, &group.CreateGroupInput{
+	input := &group.CreateGroupInput{
 		TeamSlug: team,
 		Category: teamCategory,
 		Suffix:   suffix,
-	}, actor)
+	}
+	createdGroup, err := group.Create(ctx, input, actor)
+	if err != nil {
+		createdGroup, err = group.Get(ctx, group.GenerateName(input))
+		if err != nil {
+			fmt.Printf("error creating or loading group: %s\n", err)
+			return
+		}
+	}
 
 	i := 0
 	if len(users)-membersToAdd > 0 {
@@ -395,7 +405,7 @@ func createGroupAndAddUsers(ctx context.Context, actor *authz.Actor, team slug.S
 	}
 	for index := range membersToAdd {
 		user := users[i+index].UUID
-		err := group.AddMember(ctx, group.AddGroupMemberInput{
+		err = group.AddMember(ctx, group.AddGroupMemberInput{
 			GroupName: createdGroup.Name,
 			UserID:    user,
 		}, actor)
