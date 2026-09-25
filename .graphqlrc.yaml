@@ -1,0 +1,2 @@
+schema:
+  - ./api/internal/graph/schema/*.graphqls

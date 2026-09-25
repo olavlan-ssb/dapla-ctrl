@@ -28,6 +28,7 @@
             protoc-gen-go-grpc
             svelte-language-server
             yaml-language-server
+            graphql-language-service-cli
           ];
         };
 
